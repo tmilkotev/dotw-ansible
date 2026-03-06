@@ -1,0 +1,7 @@
+# collections/requirements.yml
+# external collections (modules/plugins) installed via ansible-galaxy
+
+---
+collections:
+  - name: ansible.posix       # POSIX-related modules and plugins
+  - name: community.general   # large collection of community modules

@@ -1,0 +1,5 @@
+# requirements.yml
+# external roles installed via ansible-galaxy
+
+---
+roles: []
