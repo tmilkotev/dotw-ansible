@@ -1,0 +1,9 @@
+# .gitignore
+.ansible/
+*.retry
+*.log
+.vagrant/
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
