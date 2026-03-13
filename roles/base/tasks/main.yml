@@ -1,0 +1,21 @@
+---
+- name: Ensure basic packages are installed
+  ansible.builtin.package:
+    name:
+      - curl
+      - wget
+      - vim
+      - git
+      - bash-completion
+    state: present
+
+- name: Ensure chrony is installed
+  ansible.builtin.package:
+    name: chrony
+    state: present
+
+- name: Enable and start chronyd
+  ansible.builtin.service:
+    name: chronyd
+    state: started
+    enabled: true
