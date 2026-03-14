@@ -19,3 +19,20 @@
     KUBECONFIG: /etc/kubernetes/admin.conf
   register: flannel_apply
   changed_when: "'created' in flannel_apply.stdout"
+
+- name: Wait for Flannel DaemonSet rollout
+  ansible.builtin.command: >
+    kubectl --kubeconfig /etc/kubernetes/admin.conf
+    rollout status daemonset/kube-flannel-ds
+    -n kube-flannel
+    --timeout=300s
+  changed_when: false
+
+- name: Wait for CoreDNS pods to become Ready
+  ansible.builtin.command: >
+    kubectl --kubeconfig /etc/kubernetes/admin.conf
+    wait --for=condition=Ready
+    pod -l k8s-app=kube-dns
+    -n kube-system
+    --timeout=300s
+  changed_when: false
