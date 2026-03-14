@@ -1,6 +1,29 @@
 ---
+- name: Create kubeadm patches directory
+  ansible.builtin.file:
+    path: /etc/kubernetes/patches
+    state: directory
+    mode: '0755'
+
+- name: Copy kubeadm patch files
+  ansible.builtin.copy:
+    src: "kubeadm/{{ item }}"
+    dest: "/etc/kubernetes/patches/{{ item }}"
+    mode: '0644'
+  loop:
+    - etcd+merge.yaml
+    - kube-apiserver+merge.yaml
+    - kube-controller-manager+merge.yaml
+    - kube-scheduler+merge.yaml
+
+- name: Render kubeadm init config
+  ansible.builtin.template:
+    src: kubeadm-init-config.yaml.j2
+    dest: /etc/kubernetes/kubeadm-init-config.yaml
+    mode: '0644'
+
 - name: Initialize Kubernetes control plane
-  ansible.builtin.command: kubeadm init --apiserver-advertise-address=192.168.60.10 --pod-network-cidr=10.244.0.0/16
+  ansible.builtin.command: kubeadm init --config /etc/kubernetes/kubeadm-init-config.yaml
   args:
     creates: /etc/kubernetes/admin.conf
 
@@ -33,6 +56,7 @@
   ansible.builtin.copy:
     src: kube-flannel.yml
     dest: /tmp/kube-flannel.yml
+    mode: '0644'
 
 - name: Install flannel CNI
   ansible.builtin.command: kubectl apply -f /tmp/kube-flannel.yml

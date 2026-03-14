@@ -67,3 +67,20 @@ New-Item -ItemType Directory -Force roles\okd-prereqs\files
 New-Item roles\okd-prereqs\tasks\main.yml -ItemType File -Force
 New-Item roles\okd-prereqs\defaults\main.yml -ItemType File -Force
 New-Item roles\okd-prereqs\handlers\main.yml -ItemType File -Force
+
+
+#MUST FIX ASAP
+#manual
+#refresh keys for new kubernetes-lab machines
+cd D:\IT\repos\dotw-integration\dotw-ansible 
+
+..\dotw-almalinux10wsl\towsl.ps1 "cp /mnt/d/IT/repos/dotw-integration/dotw-vagrant/labs/kubernetes-lab/.vagrant/machines/kubernetes-lab-control-plane/virtualbox/private_key /home/tosshs/.ssh/vagrant-kubernetes-lab/control-plane && cp /mnt/d/IT/repos/dotw-integration/dotw-vagrant/labs/kubernetes-lab/.vagrant/machines/kubernetes-lab-worker/virtualbox/private_key /home/tosshs/.ssh/vagrant-kubernetes-lab/worker && chmod 600 /home/tosshs/.ssh/vagrant-kubernetes-lab/control-plane /home/tosshs/.ssh/vagrant-kubernetes-lab/worker"
+
+#than clear known hosts
+..\dotw-almalinux10wsl\towsl.ps1 "ssh-keygen -R 192.168.60.10 && ssh-keygen -R 192.168.60.20"
+
+#test connectivity
+..\dotw-almalinux10wsl\towsl.ps1 "ansible all -i inventories/vagrant/kubernetes-lab/hosts.yml -m ping"
+
+#run asnible
+..\dotw-almalinux10wsl\towsl.ps1 "ANSIBLE_ROLES_PATH=./roles ansible-playbook -i inventories/vagrant/kubernetes-lab/hosts.yml playbooks/kubernetes-lab.yml"
