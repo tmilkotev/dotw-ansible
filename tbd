@@ -84,3 +84,46 @@ cd D:\IT\repos\dotw-integration\dotw-ansible
 
 #run asnible
 ..\dotw-almalinux10wsl\towsl.ps1 "ANSIBLE_ROLES_PATH=./roles ansible-playbook -i inventories/vagrant/kubernetes-lab/hosts.yml playbooks/kubernetes-lab.yml"
+
+
+
+
+#TEST
+sudo mkdir -p /etc/kubernetes
+sudo tee /etc/kubernetes/kubeadm-init-config.yaml > /dev/null <<'EOF'
+apiVersion: kubeadm.k8s.io/v1beta3
+kind: InitConfiguration
+localAPIEndpoint:
+  advertiseAddress: 192.168.60.10
+  bindPort: 6443
+nodeRegistration:
+  criSocket: unix:///run/containerd/containerd.sock
+---
+apiVersion: kubeadm.k8s.io/v1beta3
+kind: ClusterConfiguration
+networking:
+  podSubnet: 10.244.0.0/16
+EOF
+
+
+sudo systemctl stop kubelet
+
+sudo kubeadm init phase certs all --config /etc/kubernetes/kubeadm-init-config.yaml
+sudo kubeadm init phase kubeconfig all --config /etc/kubernetes/kubeadm-init-config.yaml
+sudo kubeadm init phase etcd local --config /etc/kubernetes/kubeadm-init-config.yaml
+sudo kubeadm init phase control-plane all --config /etc/kubernetes/kubeadm-init-config.yaml
+
+#edit timers
+sudo sed -i 's/initialDelaySeconds: 10/initialDelaySeconds: 90/g' /etc/kubernetes/manifests/etcd.yaml
+sudo sed -i 's/periodSeconds: 10/periodSeconds: 60/g' /etc/kubernetes/manifests/etcd.yaml
+
+sudo sed -i 's/initialDelaySeconds: 10/initialDelaySeconds: 90/g' /etc/kubernetes/manifests/kube-apiserver.yaml
+sudo sed -i 's/periodSeconds: 10/periodSeconds: 60/g' /etc/kubernetes/manifests/kube-apiserver.yaml
+
+sudo sed -i 's/initialDelaySeconds: 10/initialDelaySeconds: 90/g' /etc/kubernetes/manifests/kube-controller-manager.yaml
+sudo sed -i 's/periodSeconds: 10/periodSeconds: 60/g' /etc/kubernetes/manifests/kube-controller-manager.yaml
+
+sudo sed -i 's/initialDelaySeconds: 10/initialDelaySeconds: 90/g' /etc/kubernetes/manifests/kube-scheduler.yaml
+sudo sed -i 's/periodSeconds: 10/periodSeconds: 60/g' /etc/kubernetes/manifests/kube-scheduler.yaml
+
+sudo systemctl stop kubelet

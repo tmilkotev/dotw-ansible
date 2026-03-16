@@ -79,29 +79,50 @@
     state: directory
     mode: '0755'
 
-- name: Generate default containerd config if missing
+- name: Check if containerd config exists
+  ansible.builtin.stat:
+    path: /etc/containerd/config.toml
+  register: containerd_config_stat
+
+- name: Check if containerd config has version header
+  ansible.builtin.command: grep -q '^version = $' /etc/containerd/config.toml
+  register: containerd_header_check
+  failed_when: false
+  changed_when: false
+  when: containerd_config_stat.stat.exists
+
+- name: Generate default containerd config when missing or invalid
   ansible.builtin.shell: |
     containerd config default > /etc/containerd/config.toml
   args:
-    creates: /etc/containerd/config.toml
+    executable: /bin/bash
+  when: >
+    (not containerd_config_stat.stat.exists) or
+    (containerd_config_stat.stat.exists and containerd_header_check.rc != 0)
+  notify: Restart containerd
 
 - name: Ensure CRI plugin is enabled in containerd config
   ansible.builtin.replace:
     path: /etc/containerd/config.toml
     regexp: '^disabled_plugins\s*=\s*\["cri"\]\s*$'
     replace: '# disabled_plugins = ["cri"]'
+  notify: Restart containerd
 
 - name: Set SystemdCgroup true in containerd config
   ansible.builtin.replace:
     path: /etc/containerd/config.toml
     regexp: 'SystemdCgroup = false'
     replace: 'SystemdCgroup = true'
+  notify: Restart containerd
 
 - name: Enable and start containerd
   ansible.builtin.service:
     name: containerd
     state: started
     enabled: true
+
+- name: Flush handlers so containerd is restarted before kubelet work
+  ansible.builtin.meta: flush_handlers
 
 - name: Add Kubernetes repo
   ansible.builtin.copy:
@@ -141,3 +162,19 @@
 - name: Run worker tasks
   ansible.builtin.import_tasks: worker.yml
   when: inventory_hostname in groups['kubernetes_workers']
+
+- name: Wait for all cluster nodes to become Ready
+  ansible.builtin.command: >
+    kubectl --kubeconfig /etc/kubernetes/admin.conf
+    wait --for=condition=Ready nodes --all --timeout=180s
+  when: inventory_hostname == groups['kubernetes_control_plane'][0]
+  changed_when: false
+
+- name: Wait for CoreDNS deployment rollout
+  ansible.builtin.command: >
+    kubectl --kubeconfig /etc/kubernetes/admin.conf
+    rollout status deployment/coredns
+    -n kube-system
+    --timeout=180s
+  when: inventory_hostname == groups['kubernetes_control_plane'][0]
+  changed_when: false

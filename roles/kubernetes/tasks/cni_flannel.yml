@@ -1,9 +1,8 @@
----
 - name: Wait for Kubernetes API server before Flannel install
   ansible.builtin.command: kubectl --kubeconfig /etc/kubernetes/admin.conf get nodes
   register: kubectl_ready_for_cni
   retries: 20
-  delay: 20
+  delay: 10
   until: kubectl_ready_for_cni.rc == 0
   changed_when: false
 
@@ -18,21 +17,12 @@
   environment:
     KUBECONFIG: /etc/kubernetes/admin.conf
   register: flannel_apply
-  changed_when: "'created' in flannel_apply.stdout"
+  changed_when: "'created' in flannel_apply.stdout or 'configured' in flannel_apply.stdout"
 
-- name: Wait for Flannel DaemonSet rollout
-  ansible.builtin.command: >
-    kubectl --kubeconfig /etc/kubernetes/admin.conf
-    rollout status daemonset/kube-flannel-ds
-    -n kube-flannel
-    --timeout=300s
-  changed_when: false
-
-- name: Wait for CoreDNS pods to become Ready
-  ansible.builtin.command: >
-    kubectl --kubeconfig /etc/kubernetes/admin.conf
-    wait --for=condition=Ready
-    pod -l k8s-app=kube-dns
-    -n kube-system
-    --timeout=300s
+- name: Wait for kube-flannel namespace to exist
+  ansible.builtin.command: kubectl --kubeconfig /etc/kubernetes/admin.conf get ns kube-flannel
+  register: flannel_ns_ready
+  retries: 20
+  delay: 5
+  until: flannel_ns_ready.rc == 0
   changed_when: false
