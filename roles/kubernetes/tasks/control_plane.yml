@@ -1,10 +1,17 @@
 ---
+- name: Copy kubeadm config
+  ansible.builtin.copy:
+    src: kubeadm-config.yaml
+    dest: /root/kubeadm-config.yaml
+    mode: '0600'
+
 - name: Initialize Kubernetes control plane
-  ansible.builtin.command: kubeadm init --apiserver-advertise-address=192.168.60.10 --pod-network-cidr=10.244.0.0/16
+  ansible.builtin.command: kubeadm init --config /root/kubeadm-config.yaml
   args:
     creates: /etc/kubernetes/admin.conf
+  register: kubeadm_init_result
 
-- name: Create .kube directory
+- name: Create .kube directory for vagrant
   ansible.builtin.file:
     path: /home/vagrant/.kube
     state: directory
@@ -12,29 +19,19 @@
     group: vagrant
     mode: '0755'
 
-- name: Copy admin kubeconfig
+- name: Copy admin kubeconfig for vagrant
   ansible.builtin.copy:
     src: /etc/kubernetes/admin.conf
     dest: /home/vagrant/.kube/config
     remote_src: true
     owner: vagrant
     group: vagrant
-    mode: '0644'
+    mode: '0600'
 
-- name: Wait for Kubernetes API server
-  ansible.builtin.command: kubectl --kubeconfig /etc/kubernetes/admin.conf get nodes
+- name: Wait for Kubernetes API server to respond
+  ansible.builtin.command: kubectl --kubeconfig /etc/kubernetes/admin.conf get --raw=/healthz
   register: kubectl_ready
-  retries: 20
+  retries: 30
   delay: 10
-  until: kubectl_ready.rc == 0
+  until: kubectl_ready.rc == 0 and 'ok' in kubectl_ready.stdout
   changed_when: false
-
-- name: Copy flannel manifest
-  ansible.builtin.copy:
-    src: kube-flannel.yml
-    dest: /tmp/kube-flannel.yml
-
-- name: Install flannel CNI
-  ansible.builtin.command: kubectl apply -f /tmp/kube-flannel.yml
-  environment:
-    KUBECONFIG: /etc/kubernetes/admin.conf
