@@ -1,0 +1,38 @@
+---
+- name: Deploy web application to Kubernetes
+  hosts: kubernetes_control_plane
+  become: true
+
+  vars:
+    registry_host: "{{ hostvars[groups['registry'][0]].ansible_host }}:5000"
+    
+    app_name: nginx
+    app_namespace: web
+    app_image: "{{ registry_host }}/docker.io/library/nginx:1.27"
+    app_replicas: 1
+    app_container_port: 80
+
+    manifest_path: "/tmp/{{ app_name }}-deployment.yaml"
+
+  tasks:
+    - name: Render nginx deployment manifest from template
+      ansible.builtin.template:
+        src: nginx-deployment.yaml.j2
+        dest: "{{ manifest_path }}"
+        mode: '0644'
+
+    - name: Apply nginx deployment
+      ansible.builtin.command: kubectl apply -f {{ manifest_path }}
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+      register: deploy_apply
+      changed_when: "'created' in deploy_apply.stdout or 'configured' in deploy_apply.stdout"
+
+    - name: Wait for deployment rollout
+      ansible.builtin.command: >
+        kubectl rollout status deployment/{{ app_name }}
+        -n {{ app_namespace }}
+        --timeout=180s
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+      changed_when: false
