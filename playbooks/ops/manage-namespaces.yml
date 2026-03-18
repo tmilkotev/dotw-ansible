@@ -1,0 +1,31 @@
+---
+- name: Manage Kubernetes namespaces
+  hosts: kubernetes_control_plane
+  become: true
+
+  vars:
+    namespace_name: web
+    namespace_state: present
+
+  tasks:
+    - name: Create namespace
+      ansible.builtin.command: kubectl create namespace {{ namespace_name }}
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+      register: namespace_create
+      changed_when: "'created' in namespace_create.stdout"
+      failed_when:
+        - namespace_create.rc != 0
+        - "'AlreadyExists' not in namespace_create.stderr"
+      when: namespace_state == 'present'
+
+    - name: Delete namespace
+      ansible.builtin.command: kubectl delete namespace {{ namespace_name }}
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+      register: namespace_delete
+      changed_when: "'deleted' in namespace_delete.stdout"
+      failed_when:
+        - namespace_delete.rc != 0
+        - "'NotFound' not in namespace_delete.stderr"
+      when: namespace_state == 'absent'
