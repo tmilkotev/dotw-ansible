@@ -4,6 +4,7 @@
     name:
       - curl
       - tar
+      - skopeo
     state: present
 
 - name: Create registry group
