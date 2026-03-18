@@ -74,7 +74,7 @@ New-Item roles\okd-prereqs\handlers\main.yml -ItemType File -Force
 #refresh keys for new kubernetes-lab machines
 cd D:\IT\repos\dotw-integration\dotw-ansible 
 
-..\dotw-almalinux10wsl\towsl.ps1 "cp /mnt/d/IT/repos/dotw-integration/dotw-vagrant/labs/kubernetes-lab/.vagrant/machines/kubernetes-lab-control-plane/virtualbox/private_key /home/tosshs/.ssh/vagrant-kubernetes-lab/control-plane && cp /mnt/d/IT/repos/dotw-integration/dotw-vagrant/labs/kubernetes-lab/.vagrant/machines/kubernetes-lab-worker/virtualbox/private_key /home/tosshs/.ssh/vagrant-kubernetes-lab/worker && chmod 600 /home/tosshs/.ssh/vagrant-kubernetes-lab/control-plane /home/tosshs/.ssh/vagrant-kubernetes-lab/worker"
+..\dotw-almalinux10wsl\towsl.ps1 "cp /mnt/d/IT/repos/dotw-integration/dotw-vagrant/labs/kubernetes-lab/.vagrant/machines/kubernetes-lab-control-plane/virtualbox/private_key /home/tosshs/.ssh/vagrant-kubernetes-lab/control-plane && cp /mnt/d/IT/repos/dotw-integration/dotw-vagrant/labs/kubernetes-lab/.vagrant/machines/kubernetes-lab-worker/virtualbox/private_key /home/tosshs/.ssh/vagrant-kubernetes-lab/worker && cp /mnt/d/IT/repos/dotw-integration/dotw-vagrant/labs/kubernetes-lab/.vagrant/machines/kubernetes-lab-preg/virtualbox/private_key /home/tosshs/.ssh/vagrant-kubernetes-lab/preg && chmod 600 /home/tosshs/.ssh/vagrant-kubernetes-lab/control-plane /home/tosshs/.ssh/vagrant-kubernetes-lab/worker /home/tosshs/.ssh/vagrant-kubernetes-lab/preg"
 
 #than clear known hosts
 ..\dotw-almalinux10wsl\towsl.ps1 "ssh-keygen -R 192.168.60.10 && ssh-keygen -R 192.168.60.20"
@@ -85,6 +85,10 @@ cd D:\IT\repos\dotw-integration\dotw-ansible
 #run asnible
 ..\dotw-almalinux10wsl\towsl.ps1 "ANSIBLE_ROLES_PATH=./roles ansible-playbook -i inventories/vagrant/kubernetes-lab/hosts.yml playbooks/kubernetes-lab.yml"
 
+
+
+run registry
+..\dotw-almalinux10wsl\towsl.ps1 "ANSIBLE_ROLES_PATH=./roles ansible-playbook -i inventories/vagrant/kubernetes-lab/hosts.yml playbooks/registry.yml"
 
 
 

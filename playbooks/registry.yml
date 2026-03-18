@@ -1,0 +1,7 @@
+---
+- name: Setup registry host
+  hosts: registry
+  become: true
+
+  roles:
+    - registry

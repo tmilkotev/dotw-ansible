@@ -1,0 +1,58 @@
+---
+- name: Install required packages
+  ansible.builtin.dnf:
+    name:
+      - curl
+      - tar
+    state: present
+
+- name: Create registry group
+  ansible.builtin.group:
+    name: registry
+    system: true
+
+- name: Create registry user
+  ansible.builtin.user:
+    name: registry
+    group: registry
+    system: true
+    shell: /sbin/nologin
+    home: /var/lib/registry
+    create_home: false
+
+- name: Create registry config directory
+  ansible.builtin.file:
+    path: /etc/distribution
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Create registry data directory
+  ansible.builtin.file:
+    path: /opt/registry
+    state: directory
+    owner: registry
+    group: registry
+    mode: '0755'
+
+- name: Download Distribution registry release archive
+  ansible.builtin.get_url:
+    url: https://github.com/distribution/distribution/releases/download/v3.0.0/registry_3.0.0_linux_amd64.tar.gz
+    dest: /tmp/registry_3.0.0_linux_amd64.tar.gz
+    mode: '0644'
+
+- name: Extract Distribution registry release
+  ansible.builtin.unarchive:
+    src: /tmp/registry_3.0.0_linux_amd64.tar.gz
+    dest: /tmp
+    remote_src: true
+
+- name: Install registry binary
+  ansible.builtin.copy:
+    src: /tmp/registry
+    dest: /usr/local/bin/registry
+    remote_src: true
+    owner: root
+    group: root
+    mode: '0755'

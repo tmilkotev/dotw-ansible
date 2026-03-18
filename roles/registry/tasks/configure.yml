@@ -1,0 +1,41 @@
+---
+- name: Deploy registry config
+  ansible.builtin.copy:
+    dest: /etc/distribution/registry.yml
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      version: 0.1
+      log:
+        level: info
+      storage:
+        filesystem:
+          rootdirectory: /opt/registry
+      http:
+        addr: 0.0.0.0:5000
+  notify: Restart distribution-registry
+
+- name: Deploy systemd unit for distribution-registry
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/distribution-registry.service
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      [Unit]
+      Description=Distribution OCI Registry
+      After=network-online.target
+      Wants=network-online.target
+
+      [Service]
+      Type=simple
+      User=registry
+      Group=registry
+      ExecStart=/usr/local/bin/registry serve /etc/distribution/registry.yml
+      Restart=always
+      RestartSec=5
+
+      [Install]
+      WantedBy=multi-user.target
+  notify: Reload systemd
