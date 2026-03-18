@@ -4,28 +4,54 @@
   become: true
 
   vars:
-    namespace_name: web
-    namespace_state: present
+    namespaces:
+      - name: web
+        state: present
+        labels:
+          purpose: web
+          env: lab
+
+      - name: api
+        state: absent
+        labels:
+          purpose: backend
+          env: lab
 
   tasks:
-    - name: Create namespace
-      ansible.builtin.command: kubectl create namespace {{ namespace_name }}
+    - name: Ensure namespaces present
+      ansible.builtin.command: kubectl create namespace {{ item.name }}
+      loop: "{{ namespaces }}"
       environment:
         KUBECONFIG: /etc/kubernetes/admin.conf
-      register: namespace_create
-      changed_when: "'created' in namespace_create.stdout"
+      register: ns_create
+      changed_when: "'created' in ns_create.stdout"
       failed_when:
-        - namespace_create.rc != 0
-        - "'AlreadyExists' not in namespace_create.stderr"
-      when: namespace_state == 'present'
+        - ns_create.rc != 0
+        - "'AlreadyExists' not in ns_create.stderr"
+      when: item.state == 'present'
 
-    - name: Delete namespace
-      ansible.builtin.command: kubectl delete namespace {{ namespace_name }}
+    - name: Apply namespace labels
+      ansible.builtin.command: >
+        kubectl label namespace {{ item.name }}
+        {% for label in item.labels | dict2items %}
+        {{ label.key }}={{ label.value }}
+        {% endfor %}
+        --overwrite
+      loop: "{{ namespaces }}"
       environment:
         KUBECONFIG: /etc/kubernetes/admin.conf
-      register: namespace_delete
-      changed_when: "'deleted' in namespace_delete.stdout"
+      register: ns_label
+      changed_when: "'labeled' in ns_label.stdout or 'not labeled' not in ns_label.stdout"
+      when: item.state == 'present'
+
+    - name: Ensure namespaces absent
+      ansible.builtin.command: kubectl delete namespace {{ item.name }}
+      loop: "{{ namespaces }}"
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+      register: ns_delete
+      changed_when: "'deleted' in ns_delete.stdout"
       failed_when:
-        - namespace_delete.rc != 0
-        - "'NotFound' not in namespace_delete.stderr"
-      when: namespace_state == 'absent'
+        - ns_delete.rc != 0
+        - "'NotFound' not in ns_delete.stderr"
+      when: item.state == 'absent'
