@@ -1,0 +1,45 @@
+---
+- name: Configure containerd to use private registry
+  hosts: kubernetes_cluster
+  become: true
+
+  vars:
+    registry_port: 5000
+    registry_host: "{{ hostvars[groups['registry'][0]].ansible_host }}:{{ registry_port }}"
+
+  tasks:
+    - name: Ensure certs.d directory exists
+      ansible.builtin.file:
+        path: "/etc/containerd/certs.d/{{ registry_host }}"
+        state: directory
+        mode: '0755'
+
+    - name: Configure insecure registry hosts.toml
+      ansible.builtin.copy:
+        dest: "/etc/containerd/certs.d/{{ registry_host }}/hosts.toml"
+        mode: '0644'
+        content: |
+          server = "http://{{ registry_host }}"
+
+          [host."http://{{ registry_host }}"]
+            capabilities = ["pull", "resolve"]
+            skip_verify = true
+      notify: Restart containerd
+
+    - name: Ensure containerd uses certs.d config_path
+      ansible.builtin.replace:
+        path: /etc/containerd/config.toml
+        regexp: "config_path = ''"
+        replace: "config_path = '/etc/containerd/certs.d'"
+      notify: Restart containerd
+
+  handlers:
+    - name: Restart containerd
+      ansible.builtin.service:
+        name: containerd
+        state: restarted
+
+    - name: Restart kubelet
+      ansible.builtin.service:
+        name: kubelet
+        state: restarted

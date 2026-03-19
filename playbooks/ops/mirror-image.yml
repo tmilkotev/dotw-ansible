@@ -1,0 +1,16 @@
+---
+- name: Push image to private registry
+  hosts: registry
+  become: true
+
+  vars:
+#    image: "registry.k8s.io/pause:3.9"
+    image: "docker.io/library/nginx:1.27"
+
+  tasks:
+    - name: Copy image to private registry using skopeo
+      ansible.builtin.command: >
+        skopeo copy
+        --dest-tls-verify=false
+        docker://{{ image }}
+        docker://192.168.60.30:5000/{{ image }}

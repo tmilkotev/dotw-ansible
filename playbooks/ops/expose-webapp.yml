@@ -1,0 +1,25 @@
+---
+- name: Expose web application in Kubernetes
+  hosts: kubernetes_control_plane
+  become: true
+
+  vars:
+    app_name: nginx
+    app_namespace: web
+    app_container_port: 80
+
+    manifest_path: "/tmp/{{ app_name }}-service.yaml"
+
+  tasks:
+    - name: Render nginx service manifest
+      ansible.builtin.template:
+        src: nginx-service.yaml.j2
+        dest: "{{ manifest_path }}"
+        mode: '0644'
+
+    - name: Apply nginx service
+      ansible.builtin.command: kubectl apply -f {{ manifest_path }}
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+      register: svc_apply
+      changed_when: "'created' in svc_apply.stdout or 'configured' in svc_apply.stdout"
