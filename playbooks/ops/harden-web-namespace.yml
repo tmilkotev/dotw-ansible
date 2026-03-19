@@ -1,0 +1,73 @@
+---
+- name: Apply namespace guardrails to web
+  hosts: kubernetes_control_plane
+  become: true
+
+  vars:
+    app_namespace: web
+
+    quota_manifest_path: "/tmp/{{ app_namespace }}-resourcequota.yaml"
+    limits_manifest_path: "/tmp/{{ app_namespace }}-limitrange.yaml"
+    netpol_manifest_path: "/tmp/{{ app_namespace }}-networkpolicy.yaml"
+
+    resource_quota:
+      name: web-quota
+      pods: "5"
+      services: "2"
+      requests_cpu: "500m"
+      requests_memory: "512Mi"
+      limits_cpu: "1"
+      limits_memory: "1Gi"
+
+    limit_range:
+      name: web-limits
+      default_cpu: "200m"
+      default_memory: "256Mi"
+      default_request_cpu: "100m"
+      default_request_memory: "128Mi"
+
+    network_policy:
+      deny_name: deny-all-ingress
+      allow_name: allow-nginx-from-web
+      app_label: nginx
+      port: 80
+
+  tasks:
+    - name: Render ResourceQuota manifest
+      ansible.builtin.template:
+        src: web-resourcequota.yaml.j2
+        dest: "{{ quota_manifest_path }}"
+        mode: '0644'
+
+    - name: Apply ResourceQuota
+      ansible.builtin.command: kubectl apply -f {{ quota_manifest_path }}
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+      register: quota_apply
+      changed_when: "'created' in quota_apply.stdout or 'configured' in quota_apply.stdout"
+
+    - name: Render LimitRange manifest
+      ansible.builtin.template:
+        src: web-limitrange.yaml.j2
+        dest: "{{ limits_manifest_path }}"
+        mode: '0644'
+
+    - name: Apply LimitRange
+      ansible.builtin.command: kubectl apply -f {{ limits_manifest_path }}
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+      register: limits_apply
+      changed_when: "'created' in limits_apply.stdout or 'configured' in limits_apply.stdout"
+
+    - name: Render NetworkPolicy manifest
+      ansible.builtin.template:
+        src: web-networkpolicy.yaml.j2
+        dest: "{{ netpol_manifest_path }}"
+        mode: '0644'
+
+    - name: Apply NetworkPolicy
+      ansible.builtin.command: kubectl apply -f {{ netpol_manifest_path }}
+      environment:
+        KUBECONFIG: /etc/kubernetes/admin.conf
+      register: netpol_apply
+      changed_when: "'created' in netpol_apply.stdout or 'configured' in netpol_apply.stdout"
